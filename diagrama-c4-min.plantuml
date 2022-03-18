@@ -1,0 +1,44 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+!define osaPuml https://raw.githubusercontent.com/Crashedmind/PlantUML-opensecurityarchitecture2-icons/master
+!include osaPuml/Common.puml
+!include osaPuml/User/all.puml
+
+!include <office/Servers/database_server>
+!include <office/Servers/file_server>
+!include <office/Servers/application_server>
+!include <office/Concepts/service_application>
+!include <office/Concepts/firewall>
+
+title "Projeto"
+
+AddPersonTag("user", $sprite="osa_user_large_group", $legendText="aggregated user")
+AddContainerTag("app", $sprite="application_server", $legendText="app container")
+AddContainerTag("appServer", $sprite="application_server", $legendText="app container")
+AddContainerTag("db", $sprite="database_server", $legendText="database container")
+
+AddRelTag("firewall", $textColor="$ARROW_COLOR", $lineColor="$ARROW_COLOR", $sprite="firewall,scale=0.3,color=red", $legendText="firewall")
+AddRelTag("async", $lineStyle = DashedLine())
+
+Person(aggregated_user, "Usuário", $tags="user")
+
+System_Boundary(c1, "k8s"){
+    Container(web_app_front_venda, "Frontend...", "React", "Descriçao", $tags="app")
+    Container(web_app_api_venda, "API Backend", "Java", "Descriçao", $tags="app")
+    Container(web_app_identity, "Identity Provider", "Keycloack", $tags="app")
+    Container(web_app_msg_broker, "Message Broker", "RabbitMQ", $tags="appServer")
+    ContainerDb(rel_db, "Relational Database", "MySQL", $tags="db")
+    ContainerDb(nosql_redis, "Cache", "Redis", "Descriçao", $tags="db")
+}
+
+Rel(aggregated_user, web_app_identity, "Uses", "HTTPS", $tags="firewall")
+Rel(aggregated_user, web_app_front_venda, "Uses", "HTTPS", $tags="firewall")
+
+Rel(web_app_front_venda, web_app_api_venda, "Interage com", "HTTPS/JSON")
+Rel(web_app_api_venda, nosql_redis, "Interage com", "Redis protocol")
+Rel(web_app_api_venda, rel_db, "Interage com", "SQL/JDBC")
+Rel(web_app_api_venda, web_app_msg_broker, "Publica...", "Fila x",$tags = "async")
+Rel(web_app_msg_broker,web_app_api_venda,"Consome...","Fila y",$tags = "async")
+
+@enduml
